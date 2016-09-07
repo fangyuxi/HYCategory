@@ -1,0 +1,14 @@
+PODS:
+  - HYCategory (0.1.0)
+
+DEPENDENCIES:
+  - HYCategory (from `../`)
+
+EXTERNAL SOURCES:
+  HYCategory:
+    :path: "../"
+
+SPEC CHECKSUMS:
+  HYCategory: 7589522515770f6f764848f5cd9d6e3101973e3f
+
+COCOAPODS: 0.39.0

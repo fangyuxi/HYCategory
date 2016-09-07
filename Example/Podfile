@@ -1,10 +1,8 @@
-use_frameworks!
 
 target 'HYCategory_Example' do
   pod 'HYCategory', :path => '../'
 
   target 'HYCategory_Tests' do
-    inherit! :search_paths
 
     
   end
