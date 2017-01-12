@@ -40,23 +40,29 @@ static NSString *const HYNSThreadAutoleasePoolStackKey = @"HYNSThreadAutoleasePo
                                                                 kCFRunLoopEntry,
                                                                 YES,
                                                                 -0x7FFFFFFF, //在所有通知之前
-                                                                YYRunLoopAutoreleasePoolObserverCallBack,
+                                                                HYRunLoopAutoreleasePoolObserverCallBack,
                                                                 NULL);
     CFRunLoopAddObserver(runloop, pushObserver, kCFRunLoopCommonModes);
-    CFRelease(pushObserver);
     
     //创建一个用于释放自动释放池的runloop观察者
     CFRunLoopObserverRef popObserver = CFRunLoopObserverCreate(CFAllocatorGetDefault(),
-                                                               kCFRunLoopEntry,
+                                                               kCFRunLoopBeforeWaiting | kCFRunLoopExit,
                                                                YES,
                                                                0x7FFFFFFF,//在所有通知之后
-                                                               YYRunLoopAutoreleasePoolObserverCallBack,
+                                                               HYRunLoopAutoreleasePoolObserverCallBack,
                                                                NULL);
     CFRunLoopAddObserver(runloop, popObserver, kCFRunLoopCommonModes);
-    CFRelease(pushObserver);
 }
 
-static void YYRunLoopAutoreleasePoolObserverCallBack(CFRunLoopObserverRef observer, CFRunLoopActivity activity, void *info) {
+static const void *PoolStackRetainCallBack(CFAllocatorRef allocator, const void *value) {
+    return value;
+}
+
+static void PoolStackReleaseCallBack(CFAllocatorRef allocator, const void *value) {
+    CFRelease((CFTypeRef)value);
+}
+
+static void HYRunLoopAutoreleasePoolObserverCallBack(CFRunLoopObserverRef observer, CFRunLoopActivity activity, void *info) {
     switch (activity) {
         case kCFRunLoopEntry: {
             AutoreleasePoolPush();
@@ -74,26 +80,31 @@ static void YYRunLoopAutoreleasePoolObserverCallBack(CFRunLoopObserverRef observ
 
 static void AutoreleasePoolPush()
 {
+    NSLog(@"push");
     NSMutableDictionary *dic = [NSThread currentThread].threadDictionary;
-    NSPointerArray *poolStack = [dic objectForKey:HYNSThreadAutoleasePoolStackKey];
+    NSMutableArray *poolStack = [dic objectForKey:HYNSThreadAutoleasePoolStackKey];
     
     if (!poolStack) {
-        NSPointerArray *stack = [NSPointerArray weakObjectsPointerArray];
-        [dic setObject:stack forKey:HYNSThreadAutoleasePoolStackKey];
-        poolStack = stack;
+        
+        //autoreleasepool 不能被retain和autorelease
+        CFArrayCallBacks callbacks = {0};
+        callbacks.retain = PoolStackRetainCallBack;
+        callbacks.release = PoolStackReleaseCallBack;
+        poolStack = (id)CFArrayCreateMutable(CFAllocatorGetDefault(), 0, &callbacks);
+        dic[HYNSThreadAutoleasePoolStackKey] = poolStack;
+        CFRelease(poolStack);
     }
     
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-    [poolStack addPointer:pool];
+    [poolStack addObject:pool];
 }
 
 static void AutoreleasePoolPop()
 {
+    NSLog(@"pop");
     NSMutableDictionary *dic = [NSThread currentThread].threadDictionary;
-    NSPointerArray *poolStack = [dic objectForKey:HYNSThreadAutoleasePoolStackKey];
-    NSAutoreleasePool *pool = [poolStack pointerAtIndex:[poolStack count] - 1];
-    [poolStack removePointerAtIndex:[poolStack count] - 1];
-    [pool release];
+    NSMutableArray *poolStack = [dic objectForKey:HYNSThreadAutoleasePoolStackKey];
+    [poolStack removeLastObject];
 }
 
 @end

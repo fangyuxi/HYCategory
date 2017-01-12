@@ -10,9 +10,15 @@ Pod::Spec.new do |s|
   s.source           = { :git => 'https://github.com/fangyuxi/HYCategory.git', :tag => s.version.to_s }
 
   s.ios.deployment_target = '7.0'
-
   s.source_files = 'HYCategory/Classes/**/*'
-  
+
+
+    s.subspec 'Core' do |spec|
+    spec.requires_arc = false
+    spec.compiler_flags = '-ObjC'
+    spec.source_files = 'HYCategory/Classes/Foundation/NSThread+Runloop.m'
+    end
+
   # s.resource_bundles = {
   #   'HYCategory' => ['HYCategory/Assets/*.png']
   # }
